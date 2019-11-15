@@ -1,0 +1,479 @@
+/*==================================================================================
+  ➤ Created by AE Maker - 2019
+  ➤ Don’t forget to subscribe to my Youtube channel:
+     https://www.youtube.com/AEMaker
+  ==================================================================================*/
+
+#ifndef CLOCK_H
+#define CLOCK_H
+
+#define LCD_BLK 15
+
+#define swap(a, b) { int t = a; a = b; b = t; }
+
+/* Time and Date */
+uint8_t hh = 0, mm = 0, ss = 0;
+uint16_t WD = 0, DD = 0, MM = 0, YYYY = 0;
+int prevSec = 0;
+char daysOfTheWeek[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+
+/* NTP */
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600);
+
+/* LCD */
+byte LCD_RAM_BUFF[864];
+extern byte LCD_RAM[864];
+
+int clockCenterX = 34;
+int clockCenterY = 34;
+
+LCD1202 lcd(2, 0, 4, 5);  // RST, CS, MOSI, SCK
+
+static const char earth[] PROGMEM =
+{
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x80, 0xC0, 0xF0, 0x70, 0x70, 0x70, 0x78, 0xF8, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0,
+0xF0, 0xF4, 0xFC, 0xFE, 0xFA, 0x30, 0x1C, 0x12, 0x94, 0xDE, 0x9E, 0xBE, 0x3B, 0x01, 0x03, 0x33,
+0x7E, 0x7E, 0x1F, 0x1F, 0x1F, 0x0F, 0x1F, 0x17, 0x13, 0x00, 0x80, 0x80, 0x00, 0x40, 0xE0, 0xF0,
+0xF0, 0xF8, 0xF8, 0xF0, 0xF0, 0xE0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF8, 0xF8, 0xF8, 0xFC, 0xFC,
+0xFE, 0xFE, 0xFE, 0xFE, 0xFC, 0xFC, 0xF8, 0xFC, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8,
+0x70, 0x70, 0x70, 0x30, 0x30, 0xF0, 0x70, 0x30, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0xF0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x3F, 0x3E, 0x1F, 0x0F, 0x0F, 0x03, 0x03, 0x07, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x73, 0xF0, 0xBF, 0x9C, 0xCE, 0xDF, 0x2F,
+0x3F, 0x3F, 0x3F, 0x3F, 0x67, 0x6F, 0xEF, 0xFF, 0xFF, 0xE7, 0xDF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0x3E, 0xDE, 0x0C, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x09, 0x1F, 0x1F, 0x3F, 0x3F, 0x61, 0x71,
+0xD1, 0x01, 0x07, 0x19, 0x80, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0xFC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFB, 0xEF, 0xFF, 0x7F, 0xFF, 0x3B, 0x3B, 0x1F, 0x07, 0x07,
+0x0F, 0x0F, 0x7F, 0xFF, 0x3F, 0x1F, 0x0F, 0x0F, 0x1F, 0x7F, 0x7F, 0x7F, 0xFF, 0x0F, 0x0F, 0x0F,
+0x08, 0x60, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x01, 0x01, 0x78, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFE, 0xFE, 0xF8, 0xF0, 0xF0, 0xF0, 0xE0,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x1F, 0xFF,
+0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x07, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F, 0x1E, 0x30, 0x40, 0x58, 0x5E,
+0x02, 0x10, 0x03, 0x00, 0x00, 0x90, 0x10, 0x70, 0x70, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x01, 0x03, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x3F, 0x0F, 0x0F, 0x07,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07,
+0x3F, 0xFF, 0xFF, 0xFF, 0x7F, 0x1F, 0x0F, 0x03, 0x00, 0x1C, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0xF8,
+0xFC, 0x7C, 0x7E, 0xFE, 0xFF, 0xFF, 0xFC, 0xFC, 0xFF, 0x78, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x3F, 0x7F, 0x5B, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x01, 0x01, 0x01, 0x00, 0x00, 0x08, 0x08, 0x04, 0x03, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+void connectWifi(char *id, char *pwd);
+void connectNtp(void);
+void drawMark(int h);
+void drawSec(int s);
+void drawMin(int m);
+void drawHour(int h, int m);
+void drawDisplay();
+void setBrightness(uint8_t brightness);
+void CalcDate(uint64_t seconds);
+bool checkYear(int year);
+int daysInMonth(uint16_t month, uint16_t year);
+int startDayOfWeek(uint16_t month, uint16_t year);
+void copyBuffer(void);
+void swapBuffer(void);
+void shiftBuffer(void);
+void drawScreen1(void);
+void drawScreen2(void);
+void drawScreen3(void);
+void nextFrame(int timeScreen);
+
+
+void connectWifi(char *id, char *pwd) {
+  int cnt = 0;
+
+  lcd.drawBitmap(0, 0, earth, 96, 64, 1);   // draw World Map
+  lcd.Update();   // update the display
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(id, pwd);
+  
+  while(WiFi.status() != WL_CONNECTED) {
+    lcd.drawCircle(38, 64, 1, (cnt == 0) ? 0 : 1);    lcd.drawCircle(38, 64, 2, (cnt == 0) ? 1 : 0);
+    lcd.drawCircle(48, 64, 1, (cnt == 1) ? 0 : 1);    lcd.drawCircle(48, 64, 2, (cnt == 1) ? 1 : 0);
+    lcd.drawCircle(58, 64, 1, (cnt == 2) ? 0 : 1);    lcd.drawCircle(58, 64, 2, (cnt == 2) ? 1 : 0);
+    lcd.Update();
+    delay(500);
+    Serial.print(".");
+
+    (cnt == 2) ? cnt = 0 : cnt++;
+  }
+  
+  Serial.print(" Connected to ");
+  Serial.println(id);
+  Serial.println();
+
+}
+
+void connectNtp(void) {
+  timeClient.begin();
+  timeClient.setTimeOffset(7 * 3600);   // changes the time offset. Time zone in Vietnam (GMT+7). 
+  timeClient.update();
+}
+
+void drawMark(int h) {
+  float x1, y1, x2, y2;
+  
+  h = h * 30;
+  h = h + 270;
+  
+  x1 = 29 * cos(h * 0.0175);
+  y1 = 29 * sin(h * 0.0175);
+  x2 = 26 * cos(h * 0.0175);
+  y2 = 26 * sin(h * 0.0175);
+  
+  lcd.drawLine(x1 + clockCenterX, y1 + clockCenterY, x2 + clockCenterX, y2 + clockCenterY, 1);
+}
+
+void drawSec(int s) {
+  float x1, y1, x2, y2;
+
+  s = s * 6;
+  s = s + 270;
+  
+  x1 = 29 * cos(s * 0.0175);
+  y1 = 29 * sin(s * 0.0175);
+  x2 = 26 * cos(s * 0.0175);
+  y2 = 26 * sin(s * 0.0175);
+  
+  lcd.drawLine(clockCenterX, clockCenterY, x2 + clockCenterX, y2 + clockCenterY, 1);
+}
+
+void drawMin(int m) {
+  float x1, y1, x2, y2, x3, y3, x4, y4;
+
+  m = m * 6;
+  m = m + 270;
+  
+  x1 = 25 * cos(m * 0.0175);
+  y1 = 25 * sin(m * 0.0175);
+  x2 = 3 * cos(m * 0.0175);
+  y2 = 3 * sin(m * 0.0175);
+  x3 = 10 * cos((m + 8) * 0.0175);
+  y3 = 10 * sin((m + 8) * 0.0175);
+  x4 = 10 * cos((m - 8) * 0.0175);
+  y4 = 10 * sin((m - 8) * 0.0175);
+  
+  lcd.drawLine(x1 + clockCenterX, y1 + clockCenterY, x3 + clockCenterX, y3 + clockCenterY, 1);
+  lcd.drawLine(x3 + clockCenterX, y3 + clockCenterY, x2 + clockCenterX, y2 + clockCenterY, 1);
+  lcd.drawLine(x2 + clockCenterX, y2 + clockCenterY, x4 + clockCenterX, y4 + clockCenterY, 1);
+  lcd.drawLine(x4 + clockCenterX, y4 + clockCenterY, x1 + clockCenterX, y1 + clockCenterY, 1);
+}
+
+void drawHour(int h, int m) {
+  float x1, y1, x2, y2, x3, y3, x4, y4;
+
+  h = (h * 30) + (m / 2);
+  h = h + 270;
+  
+  x1 = 20 * cos(h * 0.0175);
+  y1 = 20 * sin(h * 0.0175);
+  x2 = 3 * cos(h * 0.0175);
+  y2 = 3 * sin(h * 0.0175);
+  x3 = 8 * cos((h + 12) * 0.0175);
+  y3 = 8 * sin((h + 12) * 0.0175);
+  x4 = 8 * cos((h - 12) * 0.0175);
+  y4 = 8 * sin((h - 12) * 0.0175);
+  
+  lcd.drawLine(x1 + clockCenterX, y1 + clockCenterY, x3 + clockCenterX, y3 + clockCenterY, 1);
+  lcd.drawLine(x3 + clockCenterX, y3 + clockCenterY, x2 + clockCenterX, y2 + clockCenterY, 1);
+  lcd.drawLine(x2 + clockCenterX, y2 + clockCenterY, x4 + clockCenterX, y4 + clockCenterY, 1);
+  lcd.drawLine(x4 + clockCenterX, y4 + clockCenterY, x1 + clockCenterX, y1 + clockCenterY, 1);
+}
+
+void drawDisplay() {
+  lcd.Clear_LCD();
+  
+  // Draw Clockface
+  lcd.drawCircle(clockCenterX, clockCenterY, 32, 1);
+  
+  for (int i = 0; i < 1; i++) {
+    lcd.drawCircle(clockCenterX, clockCenterY, 31 - i, 1);
+  }
+  
+  for (int i = 0; i < 3; i++) {
+    lcd.drawCircle(clockCenterX, clockCenterY, i, 1);
+  }
+  
+  // Draw a small mark for every hour
+  for (int i = 0; i < 12; i++) {
+    drawMark(i);
+  }
+}
+
+void setBrightness(uint8_t brightness) {
+  analogWrite(LCD_BLK, 1023 * brightness / 100);
+}
+
+void CalcDate(uint64_t seconds) {
+  int minutes, hours, days, years, months;
+  int dayOfWeek;
+
+  minutes  = seconds / 60;
+  seconds -= minutes * 60;
+  hours    = minutes / 60;
+  minutes -= hours   * 60;
+  days     = hours   / 24;
+  hours   -= days    * 24;
+  years    = 1970;
+  dayOfWeek = 4;
+
+  while(1) {
+    char leapYear = (years % 4 == 0 && (years % 100 != 0 || years % 400 == 0));
+    int daysInYear = leapYear ? 366 : 365;
+    if (days >= daysInYear) {
+      dayOfWeek += leapYear ? 2 : 1;
+      days      -= daysInYear;
+      if (dayOfWeek >= 7)  dayOfWeek -= 7;
+      ++years;
+    }
+    else {
+      DD = days;
+      dayOfWeek += days;
+      dayOfWeek %= 7;
+
+      static const unsigned char daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+      for(months = 0; months < 12; ++months) {
+        unsigned char dim = daysInMonth[months];
+
+        if (months == 1 && leapYear)  ++dim;
+
+        if (days >= dim)  days -= dim;
+        else  break;
+      }
+      break;
+    }
+  }
+
+  ss  = seconds;
+  mm  = minutes;
+  hh = hours;
+  DD = days + 1;
+  MM  = months + 1;
+  YYYY = years;
+  WD = dayOfWeek;
+}
+
+bool checkYear(int year) {
+  return ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0); 
+} 
+
+int daysInMonth(uint16_t month, uint16_t year) {
+  byte days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  if(month == 2) {
+    if(checkYear(year))  return 29;
+    else  return 28;
+  }
+  else  return days[month - 1];  
+}
+
+int startDayOfWeek(uint16_t month, uint16_t year) {
+  byte days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  byte startDay = 6;   // in 2000
+  int sumDay = 0;
+
+  for(int i = 2001; i <= year; i++) {
+    if(checkYear(i - 1))  sumDay += 366;
+    else  sumDay += 365;
+  }
+
+  startDay += sumDay % 7;
+  startDay %= 7;
+
+  sumDay = 31;
+  
+  if(month == 1)  return startDay;
+  else if(month == 2)  sumDay = 31;
+  else {
+    if(checkYear(year))  days[1] = 29;
+
+    for(int i = 3; i <= month; i++) {
+      sumDay += days[i - 2];
+    }
+  }
+  
+  startDay += sumDay % 7;
+  startDay %= 7;
+
+  return startDay;
+} 
+
+void copyBuffer(void) {
+  for(int i = 0; i < 864; i++) {
+    LCD_RAM_BUFF[i] = LCD_RAM[i];
+  }
+}
+
+void swapBuffer(void) {
+  for(int i = 0; i < 864; i++) {
+    swap(LCD_RAM[i], LCD_RAM_BUFF[i]);
+  }
+}
+
+void shiftBuffer(void) {
+  int cnt=0;
+  
+  for(int i = 0; i < 864; i++) {
+    if(i % 96 == 95) {
+      LCD_RAM[i] = LCD_RAM_BUFF[cnt * 96];
+      cnt++;
+    }
+    else  LCD_RAM[i] = LCD_RAM[i + 1];
+  }
+
+  for(int i = 0; i < 864; i++) {
+    if(i % 96 == 95)  LCD_RAM_BUFF[i] = 0;
+    else  LCD_RAM_BUFF[i] = LCD_RAM_BUFF[i + 1];
+  }
+}
+
+void drawScreen1(void) {
+  char str[20];
+  
+  lcd.Clear_LCD();
+
+  drawDisplay();
+  drawSec(ss);
+  drawMin(mm);
+  drawHour(hh, mm);
+
+  sprintf(str, "%.2d:%.2d", hh, mm);
+  lcd.print(65, 0, 1, str);
+  
+  lcd.simb10x16(70, 12, 1, ss / 10);
+  lcd.simb10x16(82, 12, 1, ss % 10);
+
+  sprintf(str, "%.2d/%.2d", DD, MM);
+  lcd.print(67, 48, 1, str);
+  lcd.print(69, 60, 1, YYYY);  
+  lcd.print(73, 36, 1, daysOfTheWeek[WD]);
+}
+
+void drawScreen2(void) {
+  int cntStr;
+  char str[20];
+  char daysOfWeek[7][10] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+  lcd.Clear_LCD();
+  lcd.drawRect(0, 0, 96, 68, 1);
+  lcd.fillRect(0, 0, 96, 11, 1);
+  sprintf(str, "INTERNET TIME");
+  cntStr = strlen(str);
+  lcd.print(48 - (cntStr * 3), 2, 0, str);
+
+  lcd.drawFastHLine(13, 51, 70, 1);
+  lcd.drawFastHLine(13, 26, 70, 1);
+  lcd.simb10x16(23, 31, 1, hh / 10);
+  lcd.simb10x16(35, 31, 1, hh % 10);
+  lcd.drawRect(47, 36, 2, 2, 1);
+  lcd.drawRect(47, 42, 2, 2, 1);
+  lcd.simb10x16(50, 31, 1, mm / 10);
+  lcd.simb10x16(62, 31, 1, mm % 10);
+
+  sprintf(str, "%.2d/%.2d/%.4d", DD, MM, 2019);
+  cntStr = strlen(str);
+  lcd.print(48 - (cntStr * 3), 16, 1, str);
+  cntStr = strlen(daysOfWeek[WD]);
+  lcd.print(48 - (cntStr * 3), 55, 1, daysOfWeek[WD]);
+}
+
+void drawScreen3(void) {
+  int cntStr;
+  char str[20];
+  char daysOfWeek[7][10] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+  lcd.Clear_LCD();
+  sprintf(str, "%.2d/%.4d", MM, YYYY);
+  cntStr = strlen(str);
+  lcd.print(48 - (cntStr * 3), 0, 1, str);
+
+  int r = 0, c = startDayOfWeek(MM, YYYY);
+
+  memset(str, 0, 20);   // set all elements of an array to zero
+  
+  for(int i = 0; i < 7; i++) {
+    strncpy(str, daysOfWeek[i], 2);
+    lcd.print(i * 14, 8, 1, str);
+  }
+  
+  for(int i = 1; i <= daysInMonth(MM, YYYY); i++) {
+    if(i == DD) {
+      lcd.fillRect((c * 14) - 1, 15 + (r * 9), (i < 10) ? 7 : 13, 9, 1);
+      lcd.print(c * 14, 16 + (r * 9), 0, i);
+    }
+    else  lcd.print(c * 14, 16 + (r * 9), 1, i);
+    c++;
+    if(c > 6) {
+      c = 0;
+      r++;
+    }
+  }
+}
+
+void nextFrame(int timeScreen) {
+  char str[20];
+  static int cntScreen = 0;
+  
+  for(int i = 0; i < timeScreen; i++) {
+    timeClient.update();
+    CalcDate(timeClient.getEpochTime());
+
+    sprintf(str, "%.2d:%.2d:%.2d\t%s\t%.2d/%.2d/%d", hh, mm, ss, daysOfTheWeek[WD], DD, MM, YYYY);
+    Serial.println(str);
+
+    if(cntScreen == 0)  drawScreen1();
+    else if(cntScreen == 1)  drawScreen2();
+    else if(cntScreen == 2)  drawScreen3();
+    
+    lcd.Update();
+        
+    while(timeClient.getSeconds() == prevSec)  delay(10);
+    prevSec = timeClient.getSeconds();
+  }
+
+  copyBuffer();
+  
+  if(cntScreen == 0)  drawScreen2();
+  else if(cntScreen == 1)  drawScreen3();
+  else if(cntScreen == 2)  drawScreen1();
+
+  swapBuffer();
+
+  for(int i = 0; i < 96; i++) {
+    shiftBuffer();
+    lcd.Update();
+    delay(1);
+  }
+
+  cntScreen++;
+  if(cntScreen > 2)  cntScreen = 0;
+  
+  prevSec = timeClient.getSeconds();
+}
+
+#endif
